@@ -14,7 +14,7 @@ class Board:
         Adds a new row to the board.
         :param row_data: List of Tile objects representing the row.
         """
-        row = [Tile(tile["row_index"], tile["letter"], tile["state"]) for tile in row_data]
+        row = [Tile(tile["row_index"], tile["col_index"], tile["letter"], tile["state"]) for tile in row_data]
         self.rows.append(row)
 
     def display(self):
@@ -24,7 +24,7 @@ class Board:
         print(f"Board {self.uuid} Current State:")
         for row in self.rows:
             print(f"Row {row[0].row_index}:")
-            print(' '.join(f"{tile.letter}({tile.state})" for tile in row))
+            print(' '.join(f"{tile.letter}({tile.state})({tile.col_index})" for tile in row))
         print("\n")
         
         
