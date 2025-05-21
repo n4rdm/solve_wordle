@@ -18,7 +18,7 @@ class WordleGame:
         Starts the Wordle game by launching a browser navigating to the game page and getting a ready to play status.
         """
         p = sync_playwright().start()
-        self.browser = p.chromium.launch(headless=False, args=["--fullscreen"])
+        self.browser = p.chromium.launch(headless=True)
         self.page = self.browser.new_page()
         self.page.goto("https://wordleunlimited.org/")
         try:
@@ -76,6 +76,12 @@ class WordleGame:
         Restarts the game by refreshing the page and scrolls to the top.
         """
         self.board = Board()
+        self.page.evaluate("""
+            let overlay = document.querySelector('.fc-dialog-overlay');
+            if (overlay) overlay.remove();
+            let consentRoot = document.querySelector('.fc-consent-root');
+            if (consentRoot) consentRoot.remove();
+        """)
         self.page.click("button#refresh-button")
         self.game_state = 'running'
 

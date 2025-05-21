@@ -1,3 +1,9 @@
+"""
+First solver for Wordle.
+Uses simple logic to filter the word list based on the current board state.
+Simply removes words who would not be valid guesses based on the current board state.
+"""
+
 import random
 import os
 import sys
@@ -5,16 +11,13 @@ from rich.table import Table
 from rich.console import Console
 from rich.panel import Panel
 from rich.align import Align
-from rich.progress import Progress, BarColumn, TextColumn
 from rich.progress_bar import ProgressBar
-from rich.live import Live
-from rich.layout import Layout
 from rich.panel import Panel
-from math import log
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from browser.wordle_game import WordleGame
+import math
 
 class algoSolverV1:
     def __init__(self, word_list_path):
@@ -53,9 +56,18 @@ class algoSolverV1:
         """
         Makes a guess in the Wordle game based on the current board state.
         :param game: The WordleGame object.
-        """    
-        guess = random.choice(self.word_list)
-        self.word_list.remove(guess)
+        """
+        # The 3 first guesses are preset:
+        # preset_guesses = ['HATES', 'ROUND', 'CLIMB']
+        preset_guesses = []
+        global guess
+        if len(game.board.rows) < len(preset_guesses):
+            guess = preset_guesses[len(game.board.rows)]
+        else:
+            guess = random.choice(self.word_list)
+        console.print(Align.center(Panel(f"Guessing: {guess}", expand=False)))
+        if guess in self.word_list:
+            self.word_list.remove(guess)
         game.type_word(guess)
         
 
@@ -64,8 +76,10 @@ class algoSolverV1:
         Solves the Wordle game by making guesses based on the current board state.
         """
         # Get the current board state
+        iteration = 0
+        removed_words = []
         while game.game_state == 'running':
-            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length)
+            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words)
             # At the start of each guess do the following:
             self.update_letters(game)
             self.filter_word_list()
@@ -73,17 +87,33 @@ class algoSolverV1:
             if self.word_list:
                 self.make_guess(game)
             else:
-                print("No valid words found. Forcing a loss.")
+                console.print(Align.center(Panel("No valid words found. Forcing a loss.")))
                 game.type_word('FORCE')
             
             # After each guess, read the board and update the game state.
             game.read_board()
             game.update_game_state()
-
+            # Check if the word went through or not
+            if game.game_state == 'running':
+                iteration += 1
+                # Check if the word was added
+                if len(game.board.rows) < iteration:
+                    # The word was not added, so we need to remove it from the word list
+                    self.remove_from_word_list(guess.lower())
+                    removed_words.append(guess.lower())
+            
         if game.game_state == 'win':
-            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length)
+            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words)
+        
         elif game.game_state == 'lost':
-            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length)
+            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words)
+            # If the game is lost, retrieve the correct word from the game.
+            toast = game.page.query_selector("game-toast")
+            if toast:
+                correct_word = toast.get_attribute("text")
+                self.add_to_word_list(correct_word.lower())
+            else:
+                correct_word = None
 
 
     def filter_word_list(self):
@@ -104,6 +134,33 @@ class algoSolverV1:
         # Remove all words that do not contain letters in the 'correct' dictionary
         for letter, col_index in self.correct.items():
             self.word_list = [word for word in self.word_list if word[col_index] == letter]
+
+
+    def add_to_word_list(self, word):
+        """
+        Improves the word list file by adding words that are valid guesses if they arent already there.
+        """
+        with open(self.word_list_path, 'r') as file:
+            lines = file.readlines()
+            if word + '\n' not in lines:
+                with open(self.word_list_path, 'a') as file:
+                    file.write(word + '\n')
+                    console.print(Align.center(Panel(f"Added {word} to the word list.")))
+            else:
+                console.print(Align.center(Panel(f"{word} is already in the word list.")))
+        
+        
+    def remove_from_word_list(self, word):
+        """
+        Improves the word list file by removing words that are not valid guesses.
+        """
+        with open(self.word_list_path, 'r') as file:
+            lines = file.readlines()
+        with open(self.word_list_path, 'w') as file:
+            for line in lines:
+                if line.strip() != word:
+                    file.write(line)
+        console.print(Align.center(Panel(f"Removed {word} from the word list.")))
 
 
     def restart_game(self, game: WordleGame):
@@ -131,7 +188,8 @@ class algoSolverV1:
             self.restart_game(game)
 
 
-def display_solver_state(board, game_state, word_list, word_list_length):
+def display_solver_state(board, game_state, word_list, word_list_length, removed_words):
+    global console
     console = Console()
     console.clear()
     table = display_board_rich(board)
@@ -143,11 +201,13 @@ def display_solver_state(board, game_state, word_list, word_list_length):
     console.print(Align.center(f"Win Confidence with {len(word_list)+1} words left and {guesses_left} guesses left:"))
     bar_table = Table.grid(padding=(0, 1))
     bar_table.add_row(
-        ProgressBar(total=100, completed=win_conf, width=60),
+        ProgressBar(total=100, completed=win_conf, width=50),
         f"[bold]{win_conf:.0f}%[/bold]"
     )
     console.print(Align.center(bar_table))
     console.print(Align.center(table))
+    if removed_words:
+        console.print(Align.center(Panel(f"Removed words: {', '.join(removed_words)}", expand=False)))
 
 def display_board_rich(board):
     table = Table(show_header=False, box=None, expand=False, padding=(0,1))
@@ -169,7 +229,9 @@ def get_win_confidence(word_list, word_list_length, guesses_left):
     if words_left == 1:
         return 100.0
     if guesses_left < words_left:
-        return round(guesses_left / words_left * 100, 2)
+        # Estimate win confidence based on the probability of guessing the correct word in the remaining guesses
+        prob = 1 - ((words_left - 1) / words_left) ** guesses_left
+        return round(prob * 100, 2)
     return 100.0
 
 def display_game_state(game_state):
@@ -182,6 +244,9 @@ def display_game_state(game_state):
     return state_str
 
 if __name__ == "__main__":
-    word_list_path = "wordle_solver/utils/wordle-allowed-guesses.txt"
+    # word_list_path = "wordle_solver/utils/self_creating_list.txt"
+    # word_list_path = "wordle_solver/utils/all_en_5_letter_words.txt"
+    # word_list_path = "wordle_solver/utils/all_5_letter_words.txt"
+    word_list_path = "wordle_solver/utils/wordle_allowed_guesses.txt"
     solver = algoSolverV1(word_list_path)
     solver.start()
