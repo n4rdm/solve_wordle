@@ -20,13 +20,15 @@ from browser.wordle_game import WordleGame
 import math
 
 class algoSolverV1:
-    def __init__(self, word_list_path):
+    def __init__(self, word_list_path, headless=True):
         self.word_list_path = word_list_path
         self.word_list = self.load_word_list()
         self.word_list_length = len(self.word_list)
+        self.headless = headless
         self.absent = []
         self.present = {}
         self.correct = {}
+        self.win_rate = None
 
 
     def load_word_list(self):
@@ -58,8 +60,12 @@ class algoSolverV1:
         :param game: The WordleGame object.
         """
         # The 3 first guesses are preset:
+        preset_guesses = ['JUMPY', 'VEXIL', 'CHORD', 'BANGS', 'TWERK']
+        # preset_guesses = ['SPADE', 'WITCH', 'MOURN', 'GLOBY']
         # preset_guesses = ['HATES', 'ROUND', 'CLIMB']
-        preset_guesses = []
+        # preset_guesses = ['CONES', 'TRIAL']
+        # preset_guesses = ['TALES']
+        # preset_guesses = []
         global guess
         if len(game.board.rows) < len(preset_guesses):
             guess = preset_guesses[len(game.board.rows)]
@@ -79,10 +85,10 @@ class algoSolverV1:
         iteration = 0
         removed_words = []
         while game.game_state == 'running':
-            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words)
             # At the start of each guess do the following:
             self.update_letters(game)
             self.filter_word_list()
+            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words, self.win_rate)
             
             if self.word_list:
                 self.make_guess(game)
@@ -93,20 +99,20 @@ class algoSolverV1:
             # After each guess, read the board and update the game state.
             game.read_board()
             game.update_game_state()
+
             # Check if the word went through or not
             if game.game_state == 'running':
                 iteration += 1
-                # Check if the word was added
                 if len(game.board.rows) < iteration:
-                    # The word was not added, so we need to remove it from the word list
                     self.remove_from_word_list(guess.lower())
                     removed_words.append(guess.lower())
+                    iteration -= 1
             
         if game.game_state == 'win':
-            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words)
+            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words, self.win_rate)
         
         elif game.game_state == 'lost':
-            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words)
+            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words, self.win_rate)
             # If the game is lost, retrieve the correct word from the game.
             toast = game.page.query_selector("game-toast")
             if toast:
@@ -165,8 +171,14 @@ class algoSolverV1:
 
     def restart_game(self, game: WordleGame):
         """
-        Restarts the game by refreshing the page.
+        Restarts the game.
         """
+        game.page.wait_for_selector("div#statistics", timeout=5000)
+        stat_elements = game.page.query_selector_all("div.container div#statistics div.statistic-container div.statistic")
+        if stat_elements and len(stat_elements) > 1:
+            self.win_rate = stat_elements[1].inner_text()
+        else:
+            print("Could not find win rate statistic.")
         self.absent = []
         self.present = {}
         self.correct = {}
@@ -181,14 +193,14 @@ class algoSolverV1:
         """
         Starts the solver and interacts with the Wordle game.
         """
-        game = WordleGame()
+        game = WordleGame(headless=self.headless)
         game.start()
         while True:
             self.solve(game)
             self.restart_game(game)
 
 
-def display_solver_state(board, game_state, word_list, word_list_length, removed_words):
+def display_solver_state(board, game_state, word_list, word_list_length, removed_words, win_rate):
     global console
     console = Console()
     console.clear()
@@ -197,7 +209,26 @@ def display_solver_state(board, game_state, word_list, word_list_length, removed
     win_conf = get_win_confidence(word_list, word_list_length, guesses_left)
     state_str = display_game_state(game_state)
 
-    console.print(Align.center(Panel(state_str, expand=False)))
+    # Display game state and winrate side by side
+    panels = [Panel(state_str, expand=True)]
+    if win_rate:
+        win_rate_val = win_rate.split(" ")[0]
+        # Dynamically color winrate: red (low) to green (high)
+        try:
+            win_rate_num = float(win_rate_val)
+        except ValueError:
+            win_rate_num = 0
+        # Calculate color: 0 = red, 100 = green
+        red = int(255 * (1 - win_rate_num / 100))
+        green = int(180 * (win_rate_num / 100) + 75)  # keep green visible at low winrate
+        color_hex = f"#{red:02x}{green:02x}00"
+        panels.append(Panel(f"[bold {color_hex}]Winrate: {win_rate_val}%[/]", expand=True))
+    if len(panels) == 2:
+        panel_table = Table.grid(expand=False)
+        panel_table.add_row(*panels)
+        console.print(Align.center(panel_table))
+    else:
+        console.print(Align.center(panels[0]))
     console.print(Align.center(f"Win Confidence with {len(word_list)+1} words left and {guesses_left} guesses left:"))
     bar_table = Table.grid(padding=(0, 1))
     bar_table.add_row(
@@ -236,8 +267,8 @@ def get_win_confidence(word_list, word_list_length, guesses_left):
 
 def display_game_state(game_state):
     state_colors = {
-        "running": "bold cyan",
-        "win": "bold green",
+        "running": "bold green",
+        "win": "bold green3",
         "lost": "bold red"
     }
     state_str = f"[{state_colors.get(game_state, 'white')}] Game State: {game_state.upper()} [/]"
@@ -248,5 +279,5 @@ if __name__ == "__main__":
     # word_list_path = "wordle_solver/utils/all_en_5_letter_words.txt"
     # word_list_path = "wordle_solver/utils/all_5_letter_words.txt"
     word_list_path = "wordle_solver/utils/wordle_allowed_guesses.txt"
-    solver = algoSolverV1(word_list_path)
+    solver = algoSolverV1(word_list_path, headless=False)
     solver.start()

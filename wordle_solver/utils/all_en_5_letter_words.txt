@@ -615,7 +615,6 @@ arulo
 arupa
 arusa
 arval
-arvel
 aryan
 arzan
 arzun
@@ -4448,7 +4447,6 @@ kapur
 kaput
 karbi
 karch
-karel
 karen
 karma
 karou

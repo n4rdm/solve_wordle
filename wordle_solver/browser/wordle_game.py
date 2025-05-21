@@ -7,18 +7,19 @@ from models.board import Board
 import time
 
 class WordleGame:
-    def __init__(self):
+    def __init__(self, headless=True):  
         self.browser = None
         self.page = None
         self.board = Board()
         self.game_state = 'ready'
+        self.headless = headless
 
     def start(self):
         """
         Starts the Wordle game by launching a browser navigating to the game page and getting a ready to play status.
         """
         p = sync_playwright().start()
-        self.browser = p.chromium.launch(headless=True)
+        self.browser = p.chromium.launch(headless=self.headless)
         self.page = self.browser.new_page()
         self.page.goto("https://wordleunlimited.org/")
         try:
