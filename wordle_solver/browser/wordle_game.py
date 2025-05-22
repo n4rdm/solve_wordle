@@ -13,13 +13,14 @@ class WordleGame:
         self.board = Board()
         self.game_state = 'ready'
         self.headless = headless
+        self.playwright = None
 
     def start(self):
         """
         Starts the Wordle game by launching a browser navigating to the game page and getting a ready to play status.
         """
-        p = sync_playwright().start()
-        self.browser = p.chromium.launch(headless=self.headless)
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch(headless=self.headless)
         self.page = self.browser.new_page()
         self.page.goto("https://wordleunlimited.org/")
         try:
@@ -106,5 +107,10 @@ class WordleGame:
         self.game_state = "running"
 
     def close(self):
+        print("Closing the browser...")
+        if self.page:
+            self.page.close()
         if self.browser:
             self.browser.close()
+        if self.playwright:
+            self.playwright.stop()

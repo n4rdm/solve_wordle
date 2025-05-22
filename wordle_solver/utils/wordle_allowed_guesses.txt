@@ -2049,7 +2049,6 @@ dowar
 jutka
 janny
 fryer
-bronk
 bouge
 clipt
 purse
@@ -3439,7 +3438,6 @@ clout
 duars
 liwan
 lunar
-teave
 canon
 adred
 areal
@@ -4883,7 +4881,6 @@ ameba
 idees
 lohan
 churn
-rocta
 moped
 skees
 teems
@@ -7147,7 +7144,6 @@ shwas
 cloam
 fiscs
 lithe
-wicht
 curny
 booai
 livre
@@ -7437,7 +7433,6 @@ hotel
 aiery
 moudy
 lynes
-broon
 eject
 peize
 rheme
@@ -9078,7 +9073,6 @@ supes
 pilis
 duals
 melty
-achor
 poise
 krone
 emmys
@@ -11910,7 +11904,6 @@ neums
 uvula
 basal
 atmid
-tchwi
 wiros
 poach
 odals
@@ -12391,7 +12384,6 @@ bepat
 orixa
 clonk
 hefty
-whewt
 heiau
 tareq
 indic
@@ -14255,7 +14247,6 @@ devon
 chica
 intra
 jatos
-kling
 lower
 ayaya
 lupis
@@ -15274,7 +15265,6 @@ keyed
 salue
 routs
 monad
-trasy
 ellen
 copen
 frugs
@@ -16575,3 +16565,9 @@ inbox
 pesto
 rarer
 wider
+rehab
+heard
+gipsy
+decor
+pasta
+artsy

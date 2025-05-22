@@ -13,6 +13,7 @@ from rich.panel import Panel
 from rich.align import Align
 from rich.progress_bar import ProgressBar
 from rich.panel import Panel
+import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,6 +26,7 @@ class algoSolverV1:
         self.word_list = self.load_word_list()
         self.word_list_length = len(self.word_list)
         self.headless = headless
+        self.game = WordleGame(headless=self.headless)
         self.absent = []
         self.present = {}
         self.correct = {}
@@ -54,20 +56,22 @@ class algoSolverV1:
             pass
     
 
-    def make_guess(self, game: WordleGame):
+    def make_guess(self, game: WordleGame, win_conf = 0):
         """
         Makes a guess in the Wordle game based on the current board state.
         :param game: The WordleGame object.
         """
         # The 3 first guesses are preset:
-        preset_guesses = ['JUMPY', 'VEXIL', 'CHORD', 'BANGS', 'TWERK']
-        # preset_guesses = ['SPADE', 'WITCH', 'MOURN', 'GLOBY']
+        preset_guesses = ['SLATE', 'BRICK', 'JUMPY', 'VOZHD', 'FUNGI', 'WRECK']
+        # preset_guesses = ['JUMPY', 'VEXIL', 'CHORD', 'BANGS', 'TWERK']
+        # preset_guesses = ['JUMPY', 'VEXIL', 'CHORD', 'BANGS']
         # preset_guesses = ['HATES', 'ROUND', 'CLIMB']
+        # preset_guesses = ['FRAUD', 'MELON', 'SIGHT']
         # preset_guesses = ['CONES', 'TRIAL']
         # preset_guesses = ['TALES']
         # preset_guesses = []
         global guess
-        if len(game.board.rows) < len(preset_guesses):
+        if len(game.board.rows) < len(preset_guesses) and win_conf < 100:
             guess = preset_guesses[len(game.board.rows)]
         else:
             guess = random.choice(self.word_list)
@@ -88,10 +92,10 @@ class algoSolverV1:
             # At the start of each guess do the following:
             self.update_letters(game)
             self.filter_word_list()
-            display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words, self.win_rate)
+            win_conf = display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words, self.win_rate)
             
             if self.word_list:
-                self.make_guess(game)
+                self.make_guess(game, win_conf=win_conf)
             else:
                 console.print(Align.center(Panel("No valid words found. Forcing a loss.")))
                 game.type_word('FORCE')
@@ -193,11 +197,10 @@ class algoSolverV1:
         """
         Starts the solver and interacts with the Wordle game.
         """
-        game = WordleGame(headless=self.headless)
-        game.start()
+        self.game.start()
         while True:
-            self.solve(game)
-            self.restart_game(game)
+            self.solve(self.game)
+            self.restart_game(self.game)
 
 
 def display_solver_state(board, game_state, word_list, word_list_length, removed_words, win_rate):
@@ -229,7 +232,7 @@ def display_solver_state(board, game_state, word_list, word_list_length, removed
         console.print(Align.center(panel_table))
     else:
         console.print(Align.center(panels[0]))
-    console.print(Align.center(f"Win Confidence with {len(word_list)+1} words left and {guesses_left} guesses left:"))
+    console.print(Align.center(f"Win Confidence with {len(word_list)} words left and {guesses_left} guesses left:"))
     bar_table = Table.grid(padding=(0, 1))
     bar_table.add_row(
         ProgressBar(total=100, completed=win_conf, width=50),
@@ -239,6 +242,8 @@ def display_solver_state(board, game_state, word_list, word_list_length, removed
     console.print(Align.center(table))
     if removed_words:
         console.print(Align.center(Panel(f"Removed words: {', '.join(removed_words)}", expand=False)))
+
+    return win_conf
 
 def display_board_rich(board):
     table = Table(show_header=False, box=None, expand=False, padding=(0,1))
@@ -256,7 +261,7 @@ def display_board_rich(board):
     return table
 
 def get_win_confidence(word_list, word_list_length, guesses_left):
-    words_left = max(len(word_list)+1, 1)
+    words_left = max(len(word_list), 1)
     if words_left == 1:
         return 100.0
     if guesses_left < words_left:
@@ -275,9 +280,20 @@ def display_game_state(game_state):
     return state_str
 
 if __name__ == "__main__":
-    # word_list_path = "wordle_solver/utils/self_creating_list.txt"
+    
+    word_list_path = "wordle_solver/utils/self_creating_list.txt"
     # word_list_path = "wordle_solver/utils/all_en_5_letter_words.txt"
     # word_list_path = "wordle_solver/utils/all_5_letter_words.txt"
-    word_list_path = "wordle_solver/utils/wordle_allowed_guesses.txt"
-    solver = algoSolverV1(word_list_path, headless=False)
-    solver.start()
+    # word_list_path = "wordle_solver/utils/wordle_allowed_guesses.txt"
+    # word_list_path = "wordle_solver/utils/wordle_unlimited_solutionlist.txt"
+    while True:
+        try:
+            solver = algoSolverV1(word_list_path, headless=True)
+            solver.start()
+        except Exception as e:
+            if "Target page, context or browser has been closed" in str(e):
+                sys.exit("You closed the game window. Exiting with no game restart...")
+            print(f"Error: {e}")
+            if solver.game.browser:
+                solver.game.close()
+            print("Restarting the game...")
