@@ -62,11 +62,11 @@ class algoSolverV1:
         :param game: The WordleGame object.
         """
         # The 3 first guesses are preset:
-        preset_guesses = ['SLATE', 'BRICK', 'JUMPY', 'VOZHD', 'FUNGI', 'WRECK']
-        # preset_guesses = ['JUMPY', 'VEXIL', 'CHORD', 'BANGS', 'TWERK']
+        # preset_guesses = ['SLATE', 'BRICK', 'JUMPY', 'VOZHD', 'FUNGI', 'WRECK']
+        # preset_guesses = ['BANGS', 'CHORD', 'VEXIL', 'JUMPY', 'TWERK', 'FUNGI']
         # preset_guesses = ['JUMPY', 'VEXIL', 'CHORD', 'BANGS']
         # preset_guesses = ['HATES', 'ROUND', 'CLIMB']
-        # preset_guesses = ['FRAUD', 'MELON', 'SIGHT']
+        preset_guesses = ['FRAUD', 'MELON', 'SIGHT', 'CLIMB', 'VOZHD']
         # preset_guesses = ['CONES', 'TRIAL']
         # preset_guesses = ['TALES']
         # preset_guesses = []
@@ -85,11 +85,14 @@ class algoSolverV1:
         """
         Solves the Wordle game by making guesses based on the current board state.
         """
-        # Get the current board state
         iteration = 0
+        true_iteration = 0
         removed_words = []
         while game.game_state == 'running':
-            # At the start of each guess do the following:
+            true_iteration += 1
+            if true_iteration > 20:
+                console.print(Align.center(Panel("Too many iterations. Raising an error.")))
+                raise Exception("Too many iterations. The game is stuck.")
             self.update_letters(game)
             self.filter_word_list()
             win_conf = display_solver_state(game.board, game.game_state, self.word_list, self.word_list_length, removed_words, self.win_rate)
