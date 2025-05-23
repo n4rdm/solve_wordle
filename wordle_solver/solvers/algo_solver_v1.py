@@ -196,6 +196,8 @@ class algoSolverV1:
                 .instructions { display: none !important; }
             """)
         # To keep the pc awake
+        console.clear()
+        print("Pressing Shift to keep the PC awake.")
         pyautogui.keyDown('shift')
         pyautogui.keyUp('shift')
         
