@@ -14,6 +14,7 @@ from rich.align import Align
 from rich.progress_bar import ProgressBar
 from rich.panel import Panel
 import time
+import pyautogui
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -194,6 +195,9 @@ class algoSolverV1:
         game.page.add_style_tag(content="""
                 .instructions { display: none !important; }
             """)
+        # To keep the pc awake
+        pyautogui.keyDown('shift')
+        pyautogui.keyUp('shift')
         
 
     def start(self):
